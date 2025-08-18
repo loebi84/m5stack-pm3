@@ -9,3 +9,4 @@ M5Stack Basic + M5 USB Host (MAX3421E) -> Proxmark3 Easy (USB CDC).
 - OTA web UI and manual SD update (no auto-boot flashing)
 
 Open folder in PlatformIO and upload to `m5stack-core-esp32`.
+# m5stack-pm3
