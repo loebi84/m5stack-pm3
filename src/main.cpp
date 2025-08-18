@@ -1,3 +1,5 @@
+#include "UsbPins.h"
+#include <SPI.h>
 
 #include <Arduino.h>
 #include <M5Unified.h>
@@ -142,3 +144,29 @@ void loop(){
   if(M5.BtnB.wasPressed()){ items[cur].action(); }
   delay(1);
 }
+
+/*** --- SD/USB SPI Init helpers (auto-inserted) --- ***/
+static bool g_sd_ok = false;
+
+static void deselect_all_spi_clients() {
+  pinMode(SD_CS, OUTPUT);       digitalWrite(SD_CS, HIGH);
+  pinMode(USB_MAX_CS, OUTPUT);  digitalWrite(USB_MAX_CS, HIGH);
+}
+
+static void spi_bus_begin_once() {
+  static bool done = false;
+  if (!done) { SPI.end(); SPI.begin(SPI_SCK, SPI_MISO, SPI_MOSI); done = true; }
+}
+
+static bool sd_init_multi() {
+  deselect_all_spi_clients();
+  spi_bus_begin_once();
+  const uint32_t freqs[] = { 25000000UL, 10000000UL, 4000000UL };
+  for (uint32_t f : freqs) {
+    if (SD.begin(SD_CS, SPI, f)) { M5_LOGI("[SD] mounted @ %lu Hz", (unsigned long)f); return true; }
+    M5_LOGW("[SD] begin(%lu Hz) failed", (unsigned long)f);
+    deselect_all_spi_clients();
+  }
+  return false;
+}
+/*** --- end helpers --- ***/
