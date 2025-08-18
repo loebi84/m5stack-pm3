@@ -1,0 +1,30 @@
+# ---> General
+*.log
+*.tmp
+*.swp
+*.DS_Store
+
+# ---> Local helper scripts (nicht ins Repo)
+apply_sd_fixes.sh
+ga_build_and_fetch.sh
+t.sh
+chance.sh
+
+# ---> Build artifacts
+firmware.bin
+firmware.zip
+artifact.zip
+
+# ---> Arduino
+*.elf
+*.bin
+*.hex
+
+# ---> PlatformIO
+.pio/
+.build/
+
+# ---> VSCode / IDE
+.vscode/
+.idea/
+*.code-workspace
