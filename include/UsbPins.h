@@ -1,6 +1,5 @@
 #pragma once
-
-// Falls irgendwo alte Makros definiert waren: weg damit.
+// Alle evtl. vorhandenen Alt-Makros weg
 #ifdef SPI_SCK
   #undef SPI_SCK
 #endif
@@ -26,24 +25,21 @@
   #undef USB_SPI_MOSI
 #endif
 
-// --- Board pins (M5Stack Basic, VSPI) ---
+// Pins als Konstanten (kein Preprocessor!)
 static constexpr int PM3_SPI_SCK  = 18;
 static constexpr int PM3_SPI_MISO = 19;
 static constexpr int PM3_SPI_MOSI = 23;
 
-// --- Chip selects ---
-static constexpr int PM3_SD_CS    = 4;   // TF-Slot
-static constexpr int PM3_USB_CS   = 5;   // MAX3421E (USB Host Shield)
+static constexpr int PM3_SD_CS    = 4;
+static constexpr int PM3_USB_CS   = 5;
 
-// --- Projekt-Kompatibilität (keine Makros nötig, aber wir liefern beides) ---
+// Kompatibilität (Konstanten + Aliasse)
 static constexpr int SD_CS_CONST      = PM3_SD_CS;
 static constexpr int USB_MAX_CS_CONST = PM3_USB_CS;
-
-// Falls Altcode Makros erwartet:
 #define SD_CS       SD_CS_CONST
 #define USB_MAX_CS  USB_MAX_CS_CONST
 
-// --- Aliasse, die UsbHostProxmark.hpp / UHS-Wrapper erwarten ---
+// Aliasse für UsbHostProxmark.hpp
 #define USB_SPI_SCK  PM3_SPI_SCK
 #define USB_SPI_MISO PM3_SPI_MISO
 #define USB_SPI_MOSI PM3_SPI_MOSI
