@@ -149,8 +149,8 @@ void loop(){
 static bool g_sd_ok = false;
 
 static void deselect_all_spi_clients() {
-  pinMode(SD_CS, OUTPUT);       digitalWrite(SD_CS, HIGH);
-  pinMode(USB_MAX_CS, OUTPUT);  digitalWrite(USB_MAX_CS, HIGH);
+  pinMode(SD_CS_CONST, OUTPUT);       digitalWrite(SD_CS_CONST, HIGH);
+  pinMode(USB_MAX_CS_CONST, OUTPUT);  digitalWrite(USB_MAX_CS_CONST, HIGH);
 }
 
 static void spi_bus_begin_once() {
@@ -163,7 +163,7 @@ static bool sd_init_multi() {
   spi_bus_begin_once();
   const uint32_t freqs[] = { 25000000UL, 10000000UL, 4000000UL };
   for (uint32_t f : freqs) {
-    if (SD.begin(SD_CS, SPI, f)) { M5_LOGI("[SD] mounted @ %lu Hz", (unsigned long)f); return true; }
+    if (SD.begin(SD_CS_CONST, SPI, f)) { M5_LOGI("[SD] mounted @ %lu Hz", (unsigned long)f); return true; }
     M5_LOGW("[SD] begin(%lu Hz) failed", (unsigned long)f);
     deselect_all_spi_clients();
   }
