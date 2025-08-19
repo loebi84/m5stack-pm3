@@ -1,4 +1,15 @@
 
+#ifndef USB_SPI_SCK
+#  ifdef PM3_SPI_SCK
+#    define USB_SPI_SCK  PM3_SPI_SCK
+#    define USB_SPI_MISO PM3_SPI_MISO
+#    define USB_SPI_MOSI PM3_SPI_MOSI
+#  else
+#    define USB_SPI_SCK  18
+#    define USB_SPI_MISO 19
+#    define USB_SPI_MOSI 23
+#  endif
+#endif
 #pragma once
 #include <Arduino.h>
 #include <SPI.h>
