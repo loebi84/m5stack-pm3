@@ -155,7 +155,7 @@ static void deselect_all_spi_clients() {
 
 static void spi_bus_begin_once() {
   static bool done = false;
-  if (!done) { SPI.end(); SPI.begin(SPI_SCK, SPI_MISO, SPI_MOSI); done = true; }
+  if (!done) { SPI.end(); SPI.begin(PM3_SPI_SCK, PM3_SPI_MISO, PM3_SPI_MOSI); done = true; }
 }
 
 static bool sd_init_multi() {
