@@ -10,6 +10,6 @@ static const uint8_t PM3_SPI_MOSI = 23;
 static const uint8_t PM3_SD_CS  = 4;  // TF-Slot
 static const uint8_t PM3_USB_CS = 5;  // MAX3421E
 
-// OPTIONAL: nur Variablen-Aliases für vorhandenen Code (keine Makros!)
+// OPTIONAL: only variable aliases for existing code (no macros)
 static const uint8_t SD_CS_CONST      = PM3_SD_CS;
 static const uint8_t USB_MAX_CS_CONST = PM3_USB_CS;
