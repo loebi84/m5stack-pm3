@@ -1,3 +1,5 @@
+#include <cstdint>
+#include <deque>
 
 #ifndef USB_SPI_SCK
 #  ifdef PM3_SPI_SCK
