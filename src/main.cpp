@@ -94,7 +94,7 @@ void setup(){
 
   web.begin();
   web.server().on("/usb/stats", HTTP_GET, [](AsyncWebServerRequest* req){
-    DynamicJsonDocument doc(512);
+   JsonDocument doc(512);
     doc["ready"]=pm3.ready(); doc["bytes_in"]=pm3.bytesIn(); doc["bytes_out"]=pm3.bytesOut(); doc["last_rcv"]=pm3.lastRcvErr(); doc["last_snd"]=pm3.lastSndErr();
     String out; serializeJson(doc,out); req->send(200,"application/json",out);
   });
