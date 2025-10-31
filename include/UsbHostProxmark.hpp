@@ -12,6 +12,11 @@
 #    define USB_SPI_MOSI 23
 #  endif
 #endif
+
+#ifndef USB_MAX_CS
+#define USB_MAX_CS PM3_USB_CS
+#endif
+
 #pragma once
 #include <Arduino.h>
 #include <SPI.h>
