@@ -30,8 +30,8 @@ jobs:
           pio pkg list
           cat platformio.ini || true
 
-      # p      - name: Resolve libs
-        run: pio pkg install
+      # - name: Resolve libs
+      #   run: pio pkg install
 
       - name: Build (m5stack_basic)
         run: pio run -e m5stack_basic -v
