@@ -1,12 +1,13 @@
 #!/bin/bash
 # QEMU ESP32 Test Script
-# This script runs the firmware.bin in QEMU ESP32 emulator for local testing
+# This script runs the flash_image.bin (or creates one from firmware.bin) in QEMU ESP32 emulator for local testing
 
 set -e
 
 FIRMWARE_PATH="${1:-.pio/build/m5stack_basic/firmware.bin}"
 TIMEOUT="${2:-30}"
-DOCKER_IMAGE="espressif/qemu:esp-develop-20220919"
+DOCKER_IMAGE="espressif/idf:latest"
+QEMU_BIN="/opt/esp/tools/qemu-xtensa/esp_develop_9.2.2_20250817/qemu/bin/qemu-system-xtensa"
 
 echo "=========================================="
 echo "QEMU ESP32 Firmware Test"
@@ -29,6 +30,58 @@ fi
 echo "Firmware found: $(ls -lh $FIRMWARE_PATH | awk '{print $5}')"
 echo ""
 
+# Determine if we have a flash_image.bin or need to create one
+FLASH_IMAGE=""
+FIRMWARE_DIR=$(dirname "$FIRMWARE_PATH")
+FIRMWARE_NAME=$(basename "$FIRMWARE_PATH")
+
+if [ "$FIRMWARE_NAME" = "flash_image.bin" ]; then
+    FLASH_IMAGE="$FIRMWARE_PATH"
+    echo "Using existing flash image"
+elif [ -f "$FIRMWARE_DIR/flash_image.bin" ]; then
+    FLASH_IMAGE="$FIRMWARE_DIR/flash_image.bin"
+    echo "Using flash image from build directory: $FLASH_IMAGE"
+else
+    echo "Creating merged flash image from firmware components..."
+    
+    # Check for bootloader and partition table
+    BOOTLOADER="$FIRMWARE_DIR/bootloader.bin"
+    PARTITIONS="$FIRMWARE_DIR/partitions.bin"
+    
+    if [ ! -f "$BOOTLOADER" ]; then
+        echo "Warning: bootloader.bin not found at $BOOTLOADER"
+        echo "Attempting to use firmware.bin directly (may not boot properly)"
+        FLASH_IMAGE="$FIRMWARE_PATH"
+    elif [ ! -f "$PARTITIONS" ]; then
+        echo "Warning: partitions.bin not found at $PARTITIONS"
+        echo "Attempting to use firmware.bin directly (may not boot properly)"
+        FLASH_IMAGE="$FIRMWARE_PATH"
+    else
+        # Create merged flash image using esptool
+        echo "Found bootloader and partition table, creating merged image..."
+        
+        # Check if esptool is available
+        if ! command -v esptool.py &> /dev/null; then
+            echo "Installing esptool..."
+            pip install esptool --user
+        fi
+        
+        FLASH_IMAGE="$FIRMWARE_DIR/flash_image.bin"
+        
+        esptool.py --chip esp32 merge_bin \
+            -o "$FLASH_IMAGE" \
+            --flash_mode dio \
+            --flash_size 4MB \
+            0x1000 "$BOOTLOADER" \
+            0x8000 "$PARTITIONS" \
+            0x10000 "$FIRMWARE_PATH"
+        
+        echo "Created flash image: $(ls -lh $FLASH_IMAGE | awk '{print $5}')"
+    fi
+fi
+
+echo ""
+
 # Pull Docker image if not present
 echo "Checking for QEMU Docker image..."
 if ! docker image inspect $DOCKER_IMAGE &>/dev/null; then
@@ -48,16 +101,22 @@ echo "Press Ctrl+C to stop early"
 echo ""
 echo "=========================================="
 
+# QEMU needs write access to the flash image, so make a working copy
+WORK_FLASH="qemu_logs/flash_image_work_$(date +%Y%m%d_%H%M%S).bin"
+cp "$FLASH_IMAGE" "$WORK_FLASH"
+echo "Created working copy: $WORK_FLASH"
+
 # Run QEMU with timeout
 timeout ${TIMEOUT}s docker run --rm \
-  -v "$(cd "$(dirname "$FIRMWARE_PATH")" && pwd)/$(basename "$FIRMWARE_PATH")":/firmware.bin:ro \
+  -v "$(pwd)/qemu_logs":/qemu_logs \
   $DOCKER_IMAGE \
-  /opt/qemu/bin/qemu-system-xtensa \
-  -nographic \
-  -machine esp32 \
-  -drive file=/firmware.bin,if=mtd,format=raw \
-  -serial stdio \
-  2>&1 | tee $LOG_FILE || true
+  bash -c "$QEMU_BIN \
+    -nographic \
+    -M esp32 \
+    -m 4M \
+    -drive file=/qemu_logs/$(basename "$WORK_FLASH"),if=mtd,format=raw \
+    -global driver=esp32.gpio,property=strap_mode,value=0x0f \
+    -serial file:/qemu_logs/$(basename "$LOG_FILE")" || true
 
 echo ""
 echo "=========================================="

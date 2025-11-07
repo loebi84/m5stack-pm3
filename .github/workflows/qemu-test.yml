@@ -41,35 +41,53 @@ jobs:
 
       - name: Verify firmware exists
         run: |
+          echo "Checking downloaded artifacts:"
+          ls -lh
+          echo ""
+          
           if [ ! -f firmware.bin ]; then
             echo "Error: firmware.bin not found"
             exit 1
           fi
-          ls -lh firmware.bin
-          echo "Firmware size: $(wc -c < firmware.bin) bytes"
+          
+          if [ ! -f flash_image.bin ]; then
+            echo "Error: flash_image.bin not found"
+            exit 1
+          fi
+          
+          echo "✓ firmware.bin: $(wc -c < firmware.bin) bytes"
+          echo "✓ flash_image.bin: $(wc -c < flash_image.bin) bytes"
 
       - name: Pull QEMU ESP32 Docker image
         run: |
-          docker pull espressif/qemu:esp-develop-20220919
+          docker pull espressif/idf:latest
 
       - name: Run firmware in QEMU
         id: qemu_run
         run: |
           echo "Starting QEMU ESP32 emulation..."
+          
+          # Create logs directory before running QEMU
           mkdir -p qemu_logs
           
-          # Run QEMU with the firmware binary
-          # Timeout after 60 seconds to capture boot logs
-          timeout 60s docker run --rm \
-            -v $(pwd)/firmware.bin:/firmware.bin:ro \
-            espressif/qemu:esp-develop-20220919 \
-            /opt/qemu/bin/qemu-system-xtensa \
-            -nographic \
-            -machine esp32 \
-            -drive file=/firmware.bin,if=mtd,format=raw \
-            -serial file:/dev/stdout \
-            2>&1 | tee qemu_logs/qemu_output.log || true
+          # QEMU needs write access to the flash image, so make a working copy
+          cp flash_image.bin qemu_logs/flash_image_work.bin
           
+          # Run QEMU with the merged flash image
+          # Timeout after 60 seconds to capture boot logs
+          echo "Running QEMU with flash_image.bin..."
+          timeout 60s docker run --rm \
+            -v $(pwd)/qemu_logs:/qemu_logs \
+            espressif/idf:latest \
+            bash -c '/opt/esp/tools/qemu-xtensa/esp_develop_9.2.2_20250817/qemu/bin/qemu-system-xtensa \
+              -nographic \
+              -M esp32 \
+              -m 4M \
+              -drive file=/qemu_logs/flash_image_work.bin,if=mtd,format=raw \
+              -global driver=esp32.gpio,property=strap_mode,value=0x0f \
+              -serial file:/qemu_logs/qemu_output.log' || true
+          
+          echo ""
           echo "QEMU emulation completed (timeout or exit)"
 
       - name: Analyze QEMU output

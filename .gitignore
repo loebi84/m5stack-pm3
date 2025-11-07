@@ -29,3 +29,5 @@ artifact.zip
 .vscode/
 .idea/
 *.code-workspace
+qemu_logs/
+test_firmware/
