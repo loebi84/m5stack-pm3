@@ -15,7 +15,19 @@ private:
   void toast_(const String& s){ M5.Display.fillRect(8,120,304,16,TFT_BLACK); M5.Display.setTextColor(TFT_YELLOW); M5.Display.setCursor(8,120); M5.Display.print(s); }
   void snap_(size_t n){ auto hex=host_.ring().dumpHex(n,true); M5.Display.fillRect(8,140,304,72,TFT_BLACK); M5.Display.setCursor(8,140); M5.Display.setTextColor(TFT_WHITE); size_t col=0; for(size_t i=0;i<hex.length();++i){ char c=hex[i]; M5.Display.print(c); if(++col>46 && c==' '){ M5.Display.println(); col=0; } } }
   void dump_(){ uint8_t b[256]; uint16_t l; uint8_t rc; M5.Display.fillRect(8,140,304,72,TFT_BLACK); M5.Display.setCursor(8,140); M5.Display.setTextColor(TFT_WHITE);
-    auto phex=[&](const uint8_t* d,uint16_t n){ for(uint16_t i=0;i<n;i++){ char x[4]; sprintf(x,"%02X",d[i]); M5.Display.print(x); if(i<n-1) M5.Display.print(' '); if(i%24==23) M5.Display.println(); } M5.Display.println(); };
+    static const char hex[] = "0123456789ABCDEF";
+    auto phex=[&](const uint8_t* d,uint16_t n){ 
+      for(uint16_t i=0;i<n;i++){ 
+        char x[3]; 
+        x[0] = hex[d[i] >> 4];
+        x[1] = hex[d[i] & 0x0F];
+        x[2] = 0;
+        M5.Display.print(x); 
+        if(i<n-1) M5.Display.print(' '); 
+        if(i%24==23) M5.Display.println(); 
+      } 
+      M5.Display.println(); 
+    };
     l=18; rc=host_.getDeviceDescriptor(b,&l); M5.Display.print("[DEV] "); if(rc){ M5.Display.printf("ERR %u\n",rc);} else phex(b,l);
     l=256; rc=host_.getConfigDescriptor(b,&l); M5.Display.print("[CFG] "); if(rc){ M5.Display.printf("ERR %u\n",rc);} else phex(b,(l>96?96:l));
     for(uint8_t idx=1; idx<=3; ++idx){ l=64; rc=host_.getStringDescriptor(idx,0x0409,b,&l); M5.Display.printf("[STR %u] ",idx); if(rc){ M5.Display.printf("ERR %u\n",rc);} else phex(b,l); }
