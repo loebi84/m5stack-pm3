@@ -10,7 +10,14 @@ inline bool hexToBytes(const String& hex, std::vector<uint8_t>& out){
   return true;
 }
 inline String bytesToHexLine(const uint8_t* d, size_t n){
-  String s; s.reserve(n*3);
-  for(size_t i=0;i<n;i++){ if(i) s+=' '; char b[4]; sprintf(b,"%02X", d[i]); s+=b; }
+  String s; 
+  if(n==0) return s;
+  s.reserve(n*3); // Pre-allocate: 2 chars per byte + spaces
+  static const char hex[] = "0123456789ABCDEF";
+  for(size_t i=0;i<n;i++){ 
+    if(i) s+=' '; 
+    s += hex[d[i] >> 4];
+    s += hex[d[i] & 0x0F];
+  }
   return s;
 }

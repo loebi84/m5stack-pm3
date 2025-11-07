@@ -17,8 +17,12 @@ UsbDebugView dbg(pm3);
 #include <Update.h>
 void performSdUpdate(){
   const char* fw="/firmware.bin";
-  if(!SD.begin()){ M5.Display.println("[SD] init failed"); return; }
-  if(!SD.exists(fw)){ M5.Display.println("[SD] /firmware.bin not found"); return; }
+  // SD should already be initialized in setup(), but check if still mounted
+  if(!SD.exists(fw)){ 
+    // Try re-init if not mounted
+    if(!sd_init_multi()){ M5.Display.println("[SD] init failed"); return; }
+    if(!SD.exists(fw)){ M5.Display.println("[SD] /firmware.bin not found"); return; }
+  }
   File f=SD.open(fw, FILE_READ); if(!f){ M5.Display.println("[SD] open failed"); return; }
   size_t size=f.size(); M5.Display.printf("[SD] flashing %u bytes...\n",(unsigned)size);
   if(!Update.begin(size)){ M5.Display.println("[SD] Update.begin failed"); f.close(); return; }
@@ -90,7 +94,7 @@ void setup(){
   auto cfg=M5.config(); M5.begin(cfg); M5.Display.setRotation(1);
   drawMenu();
   Serial.begin(115200);
-  if(!SD.begin()){ M5.Display.println("[SD] init failed"); }
+  if(!sd_init_multi()){ M5.Display.println("[SD] init failed"); }
 
   web.begin();
   web.server().on("/usb/stats", HTTP_GET, [](AsyncWebServerRequest* req){
@@ -118,16 +122,33 @@ void setup(){
     else if(t=="wcid") rc=pm3.getMsOsDescriptor(buf.get(), &l);
     else { req->send(400,"text/plain","unknown type"); return; }
     if(rc){ req->send(500,"text/plain", String("ERR ")+rc); return; }
-    String out; for(uint16_t i=0;i<l;i++){ if(i) out+=' '; char b[4]; sprintf(b,"%02X", buf[i]); out+=b; } req->send(200,"text/plain", out);
+    String out; out.reserve(l*3); 
+    static const char hex[] = "0123456789ABCDEF";
+    for(uint16_t i=0;i<l;i++){ 
+      if(i) out+=' '; 
+      out += hex[buf[i] >> 4];
+      out += hex[buf[i] & 0x0F];
+    } 
+    req->send(200,"text/plain", out);
   });
   web.server().on("/usb/desc/all", HTTP_GET, [](AsyncWebServerRequest* req){
     if(!pm3.ready()){ req->send(503,"text/plain","device not ready"); return; }
-    String out; auto hex=[&](const uint8_t* d,uint16_t n){ String s; for(uint16_t i=0;i<n;i++){ if(i) s+=' '; char b[4]; sprintf(b,"%02X", d[i]); s+=b; } return s; };
+    String out; 
+    static const char hex[] = "0123456789ABCDEF";
+    auto hexfmt=[&](const uint8_t* d,uint16_t n){ 
+      String s; s.reserve(n*3); 
+      for(uint16_t i=0;i<n;i++){ 
+        if(i) s+=' '; 
+        s += hex[d[i] >> 4];
+        s += hex[d[i] & 0x0F];
+      } 
+      return s; 
+    };
     uint8_t rc; uint16_t l; std::unique_ptr<uint8_t[]> b;
-    l=18; b.reset(new uint8_t[l]); rc=pm3.getDeviceDescriptor(b.get(), &l); out += "[DEVICE]\n" + (rc? String("ERR ")+rc : hex(b.get(),l)) + "\n\n";
-    l=512; b.reset(new uint8_t[l]); rc=pm3.getConfigDescriptor(b.get(), &l); out += "[CONFIG]\n" + (rc? String("ERR ")+rc : hex(b.get(),l)) + "\n\n";
-    for(uint8_t idx=1; idx<=3; ++idx){ l=128; b.reset(new uint8_t[l]); rc=pm3.getStringDescriptor(idx,0x0409,b.get(), &l); out += "[STRING "+String(idx)+"]\n" + (rc? String("ERR ")+rc : hex(b.get(),l)) + "\n\n"; }
-    l=256; b.reset(new uint8_t[l]); rc=pm3.getMsOsDescriptor(b.get(), &l); out += "[MS_OS 0xEE]\n" + (rc? String("ERR ")+rc : hex(b.get(),l)) + "\n";
+    l=18; b.reset(new uint8_t[l]); rc=pm3.getDeviceDescriptor(b.get(), &l); out += "[DEVICE]\n" + (rc? String("ERR ")+rc : hexfmt(b.get(),l)) + "\n\n";
+    l=512; b.reset(new uint8_t[l]); rc=pm3.getConfigDescriptor(b.get(), &l); out += "[CONFIG]\n" + (rc? String("ERR ")+rc : hexfmt(b.get(),l)) + "\n\n";
+    for(uint8_t idx=1; idx<=3; ++idx){ l=128; b.reset(new uint8_t[l]); rc=pm3.getStringDescriptor(idx,0x0409,b.get(), &l); out += "[STRING "+String(idx)+"]\n" + (rc? String("ERR ")+rc : hexfmt(b.get(),l)) + "\n\n"; }
+    l=256; b.reset(new uint8_t[l]); rc=pm3.getMsOsDescriptor(b.get(), &l); out += "[MS_OS 0xEE]\n" + (rc? String("ERR ")+rc : hexfmt(b.get(),l)) + "\n";
     req->send(200,"text/plain", out);
   });
 

@@ -60,6 +60,6 @@ public:
   uint8_t getMsOsDescriptor(uint8_t* buf,uint16_t* len){ return getDescriptor(0x03,0xEE,0x0000,buf,len); }
 private:
   void applyCtrl_(){ if(acm_) acm_->SetControlLineState((dtr_?1:0)|(rts_?2:0)); }
-  void pullRx_(){ if(!acm_) return; uint8_t buf[64]; for(;;){ uint16_t len=sizeof(buf); uint8_t r=acm_->RcvData(&len, buf); lastRcvErr_=r; if(r||!len) break; bytesIn_+=len; for(uint16_t i=0;i<len;i++) rx_.push_back(buf[i]); ring_.push(buf,len); if(rx_.size()>16384){ while(rx_.size()>8192) rx_.pop_front(); } } }
+  void pullRx_(){ if(!acm_) return; uint8_t buf[64]; for(;;){ uint16_t len=sizeof(buf); uint8_t r=acm_->RcvData(&len, buf); lastRcvErr_=r; if(r||!len) break; bytesIn_+=len; for(uint16_t i=0;i<len;i++) rx_.push_back(buf[i]); ring_.push(buf,len); if(rx_.size()>16384){ size_t toKeep = 8192; rx_.erase(rx_.begin(), rx_.end() - toKeep); } } }
   USB usb_; ACM* acm_; bool ready_; std::deque<uint8_t> rx_; uint32_t bytesIn_, bytesOut_; uint8_t lastRcvErr_, lastSndErr_; bool dtr_, rts_; LINE_CODING lc_{115200,0,0,8}; RingLog ring_;
 };
