@@ -21,5 +21,6 @@ jobs:
         run: echo "path=$(ls .pio/build/m5stack_basic/firmware.bin)" >> $GITHUB_OUTPUT
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
+      -    tag_name: $
         with:
           files: ${{ steps.fw.outputs.path }}
