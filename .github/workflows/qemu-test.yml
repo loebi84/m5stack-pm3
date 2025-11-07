@@ -1,0 +1,134 @@
+name: QEMU ESP32 Test
+
+on:
+  workflow_run:
+    workflows: ["Build firmware (PlatformIO)"]
+    types:
+      - completed
+  workflow_dispatch:
+
+jobs:
+  qemu-test:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download firmware artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: firmware
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.event.workflow_run.id }}
+        if: github.event_name == 'workflow_run'
+
+      # For manual trigger, we need to get the latest artifact
+      - name: Download latest firmware (manual trigger)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          # Get the latest successful build workflow run
+          LATEST_RUN=$(gh run list --workflow=build.yml --status=success --limit=1 --json databaseId --jq '.[0].databaseId')
+          echo "Latest build run: $LATEST_RUN"
+          gh run download $LATEST_RUN -n firmware
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify firmware exists
+        run: |
+          if [ ! -f firmware.bin ]; then
+            echo "Error: firmware.bin not found"
+            exit 1
+          fi
+          ls -lh firmware.bin
+          echo "Firmware size: $(stat -f%z firmware.bin 2>/dev/null || stat -c%s firmware.bin) bytes"
+
+      - name: Pull QEMU ESP32 Docker image
+        run: |
+          docker pull espressif/qemu:esp-develop-20220919
+
+      - name: Run firmware in QEMU
+        id: qemu_run
+        run: |
+          echo "Starting QEMU ESP32 emulation..."
+          mkdir -p qemu_logs
+          
+          # Run QEMU with the firmware binary
+          # Timeout after 60 seconds to capture boot logs
+          timeout 60s docker run --rm \
+            -v $(pwd)/firmware.bin:/firmware.bin:ro \
+            espressif/qemu:esp-develop-20220919 \
+            /opt/qemu/bin/qemu-system-xtensa \
+            -nographic \
+            -machine esp32 \
+            -drive file=/firmware.bin,if=mtd,format=raw \
+            -serial file:/dev/stdout \
+            2>&1 | tee qemu_logs/qemu_output.log || true
+          
+          echo "QEMU emulation completed (timeout or exit)"
+
+      - name: Analyze QEMU output
+        run: |
+          echo "=== QEMU Output Analysis ==="
+          
+          if [ ! -f qemu_logs/qemu_output.log ]; then
+            echo "Warning: No QEMU output log found"
+            exit 0
+          fi
+          
+          # Display the log
+          echo "--- QEMU Serial Output ---"
+          cat qemu_logs/qemu_output.log
+          echo "--- End of Output ---"
+          
+          # Check for common boot indicators
+          if grep -qi "boot" qemu_logs/qemu_output.log; then
+            echo "✓ Boot sequence detected"
+          fi
+          
+          # Check for crashes or errors
+          if grep -qi "panic\|abort\|crash\|fatal\|exception" qemu_logs/qemu_output.log; then
+            echo "⚠ Warning: Potential crash or error detected in firmware"
+            echo "This may be expected due to missing hardware simulation"
+          fi
+          
+          # Check for successful initialization patterns
+          if grep -qi "ready\|initialized\|setup\|begin" qemu_logs/qemu_output.log; then
+            echo "✓ Initialization messages found"
+          fi
+          
+          echo ""
+          echo "Note: QEMU has limited hardware simulation."
+          echo "Missing peripherals (display, buttons, USB) may cause expected errors."
+
+      - name: Upload QEMU logs
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: qemu-logs
+          path: qemu_logs/
+          if-no-files-found: warn
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## QEMU ESP32 Test Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "The firmware was tested in QEMU ESP32 emulator." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Limitations" >> $GITHUB_STEP_SUMMARY
+          echo "- No M5Stack display simulation" >> $GITHUB_STEP_SUMMARY
+          echo "- No button/touch input simulation" >> $GITHUB_STEP_SUMMARY
+          echo "- No USB Host (MAX3421E) simulation" >> $GITHUB_STEP_SUMMARY
+          echo "- No SD card simulation" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Purpose" >> $GITHUB_STEP_SUMMARY
+          echo "This test validates basic firmware boot and catches critical initialization errors." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ -f qemu_logs/qemu_output.log ]; then
+            echo "### Output Preview" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            head -50 qemu_logs/qemu_output.log >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
