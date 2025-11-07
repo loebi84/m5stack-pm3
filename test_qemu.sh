@@ -50,7 +50,7 @@ echo "=========================================="
 
 # Run QEMU with timeout
 timeout ${TIMEOUT}s docker run --rm \
-  -v $(pwd)/$FIRMWARE_PATH:/firmware.bin:ro \
+  -v "$(cd "$(dirname "$FIRMWARE_PATH")" && pwd)/$(basename "$FIRMWARE_PATH")":/firmware.bin:ro \
   $DOCKER_IMAGE \
   /opt/qemu/bin/qemu-system-xtensa \
   -nographic \

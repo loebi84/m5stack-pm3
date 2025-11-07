@@ -150,12 +150,14 @@ git clone https://github.com/espressif/qemu.git
 cd qemu
 ./configure --target-list=xtensa-softmmu \
     --enable-gcrypt \
-    --enable-debug --enable-sanitizers \
+    --enable-debug \
     --disable-strip --disable-user \
     --disable-capstone --disable-vnc \
     --disable-sdl --disable-gtk
 make -j$(nproc)
 ```
+
+**Note:** The `--enable-sanitizers` flag can be added for development but may cause build issues on some systems. Omit it for a standard build.
 
 ### Run Firmware
 

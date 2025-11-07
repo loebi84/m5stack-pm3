@@ -42,7 +42,7 @@ jobs:
             exit 1
           fi
           ls -lh firmware.bin
-          echo "Firmware size: $(stat -f%z firmware.bin 2>/dev/null || stat -c%s firmware.bin) bytes"
+          echo "Firmware size: $(wc -c < firmware.bin) bytes"
 
       - name: Pull QEMU ESP32 Docker image
         run: |
