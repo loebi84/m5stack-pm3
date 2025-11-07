@@ -14,6 +14,9 @@ UsbHostProxmark pm3;
 WebUpdateServer web;
 UsbDebugView dbg(pm3);
 
+// Forward declaration
+static bool sd_init_multi();
+
 #include <Update.h>
 void performSdUpdate(){
   const char* fw="/firmware.bin";
