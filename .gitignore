@@ -3,6 +3,7 @@
 *.tmp
 *.swp
 *.DS_Store
+qemu_logs/
 
 # ---> Local helper scripts (nicht ins Repo)
 apply_sd_fixes.sh

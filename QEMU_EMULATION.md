@@ -53,6 +53,30 @@ The QEMU test workflow triggers automatically when:
 
 ## Local Testing with Docker
 
+### Quick Start Script
+
+The repository includes a helper script `test_qemu.sh` for easy local testing:
+
+```bash
+# Test with default firmware location
+./test_qemu.sh
+
+# Test with custom firmware path
+./test_qemu.sh firmware.bin
+
+# Test with custom timeout (60 seconds)
+./test_qemu.sh firmware.bin 60
+```
+
+The script will:
+- Check for the firmware file
+- Pull the QEMU Docker image if needed
+- Run the emulation with timeout
+- Save logs to `qemu_logs/` directory
+- Analyze output for boot indicators and errors
+
+### Manual Docker Testing
+
 ### Prerequisites
 
 - Docker installed on your system
