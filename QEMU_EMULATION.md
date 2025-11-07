@@ -85,37 +85,45 @@ The script will:
 ### Step 1: Get the QEMU Docker Image
 
 ```bash
-docker pull espressif/qemu:esp-develop-20220919
+docker pull espressif/idf:latest
 ```
 
 ### Step 2: Run Your Firmware
 
+**Important:** ESP32 QEMU requires a complete flash image including bootloader, partition table, and application. The build process creates `flash_image.bin` which contains all these components merged together.
+
 From your project directory:
 
 ```bash
-# If you have firmware.bin in .pio/build/m5stack_basic/
+# If you have flash_image.bin from the build
 docker run --rm \
-  -v $(pwd)/.pio/build/m5stack_basic/firmware.bin:/firmware.bin:ro \
-  espressif/qemu:esp-develop-20220919 \
-  /opt/qemu/bin/qemu-system-xtensa \
+  -v $(pwd)/.pio/build/m5stack_basic/flash_image.bin:/flash_image.bin:ro \
+  espressif/idf:latest \
+  /opt/esp/tools/qemu-xtensa/esp_develop_9.2.2_20250817/qemu/bin/qemu-system-xtensa \
   -nographic \
-  -machine esp32 \
-  -drive file=/firmware.bin,if=mtd,format=raw \
+  -M esp32 \
+  -m 4M \
+  -drive file=/flash_image.bin,if=mtd,format=raw \
+  -global driver=esp32.gpio,property=strap_mode,value=0x0f \
   -serial stdio
 ```
 
-Or if you have `firmware.bin` in the current directory:
+Or if you have a standalone flash_image.bin:
 
 ```bash
 docker run --rm \
-  -v $(pwd)/firmware.bin:/firmware.bin:ro \
-  espressif/qemu:esp-develop-20220919 \
-  /opt/qemu/bin/qemu-system-xtensa \
+  -v $(pwd)/flash_image.bin:/flash_image.bin:ro \
+  espressif/idf:latest \
+  /opt/esp/tools/qemu-xtensa/esp_develop_9.2.2_20250817/qemu/bin/qemu-system-xtensa \
   -nographic \
-  -machine esp32 \
-  -drive file=/firmware.bin,if=mtd,format=raw \
+  -M esp32 \
+  -m 4M \
+  -drive file=/flash_image.bin,if=mtd,format=raw \
+  -global driver=esp32.gpio,property=strap_mode,value=0x0f \
   -serial stdio
 ```
+
+**Note:** The old Docker image `espressif/qemu:esp-develop-20220919` is no longer available. Use `espressif/idf:latest` instead.
 
 ### Step 3: Stop the Emulation
 
@@ -125,12 +133,14 @@ Press `Ctrl+C` to stop QEMU (or use `timeout` command to auto-stop after N secon
 
 ```bash
 timeout 30s docker run --rm \
-  -v $(pwd)/firmware.bin:/firmware.bin:ro \
-  espressif/qemu:esp-develop-20220919 \
-  /opt/qemu/bin/qemu-system-xtensa \
+  -v $(pwd)/flash_image.bin:/flash_image.bin:ro \
+  espressif/idf:latest \
+  /opt/esp/tools/qemu-xtensa/esp_develop_9.2.2_20250817/qemu/bin/qemu-system-xtensa \
   -nographic \
-  -machine esp32 \
-  -drive file=/firmware.bin,if=mtd,format=raw \
+  -M esp32 \
+  -m 4M \
+  -drive file=/flash_image.bin,if=mtd,format=raw \
+  -global driver=esp32.gpio,property=strap_mode,value=0x0f \
   -serial stdio
 ```
 
@@ -202,12 +212,14 @@ Due to missing hardware simulation, you may see errors like:
 
 ```bash
 docker run --rm -p 1234:1234 \
-  -v $(pwd)/firmware.bin:/firmware.bin:ro \
-  espressif/qemu:esp-develop-20220919 \
-  /opt/qemu/bin/qemu-system-xtensa \
+  -v $(pwd)/flash_image.bin:/flash_image.bin:ro \
+  espressif/idf:latest \
+  /opt/esp/tools/qemu-xtensa/esp_develop_9.2.2_20250817/qemu/bin/qemu-system-xtensa \
   -nographic \
-  -machine esp32 \
-  -drive file=/firmware.bin,if=mtd,format=raw \
+  -M esp32 \
+  -m 4M \
+  -drive file=/flash_image.bin,if=mtd,format=raw \
+  -global driver=esp32.gpio,property=strap_mode,value=0x0f \
   -serial stdio \
   -s -S
 ```
@@ -223,13 +235,15 @@ xtensa-esp32-elf-gdb .pio/build/m5stack_basic/firmware.elf
 
 ```bash
 docker run --rm \
-  -v $(pwd)/firmware.bin:/firmware.bin:ro \
+  -v $(pwd)/flash_image.bin:/flash_image.bin:ro \
   -v $(pwd):/output \
-  espressif/qemu:esp-develop-20220919 \
-  /opt/qemu/bin/qemu-system-xtensa \
+  espressif/idf:latest \
+  /opt/esp/tools/qemu-xtensa/esp_develop_9.2.2_20250817/qemu/bin/qemu-system-xtensa \
   -nographic \
-  -machine esp32 \
-  -drive file=/firmware.bin,if=mtd,format=raw \
+  -M esp32 \
+  -m 4M \
+  -drive file=/flash_image.bin,if=mtd,format=raw \
+  -global driver=esp32.gpio,property=strap_mode,value=0x0f \
   -serial file:/output/qemu_serial.log
 ```
 
@@ -237,10 +251,19 @@ docker run --rm \
 
 ### Docker: Permission Denied
 
-Make sure the firmware.bin file is readable:
+Make sure the flash_image.bin file is readable:
 ```bash
-chmod 644 firmware.bin
+chmod 644 flash_image.bin
 ```
+
+### Docker Image Not Available
+
+If you get an error like "repository does not exist", make sure you're using the correct image:
+```bash
+docker pull espressif/idf:latest
+```
+
+The old image `espressif/qemu:esp-develop-20220919` is no longer available.
 
 ### No Output Visible
 
@@ -250,8 +273,10 @@ chmod 644 firmware.bin
 
 ### QEMU Crashes Immediately
 
-- Verify firmware.bin is a valid binary (not empty, not corrupted)
-- Check that you're using the ESP32 machine type: `-machine esp32`
+- Verify flash_image.bin is a valid merged binary (not empty, not corrupted)
+- Check that you're using the ESP32 machine type: `-M esp32`
+- Ensure you're using the complete flash image with bootloader and partition table
+- Try the `-d guest_errors` flag for more debug output
 
 ## References
 
