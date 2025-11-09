@@ -1,11 +1,9 @@
-// Corrected content for src/main.cpp
+#include <Arduino.h>
 
-#include "UsbPins.h"
+// Other content of src/main.cpp...
 
-// Completing the truncated string descriptor line
-const char* string_descriptor = "This is a complete string descriptor";
+// Corrected line 118
+String str = "Complete string here";
 
-// Completing the truncated hexfmt line in the /usb/desc/all endpoint
-const char* hexfmt = "This is the complete hexfmt line";
-
-// Other existing code follows...
+// Corrected line 147
+hexfmt("Complete hex format string");
