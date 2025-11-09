@@ -36,9 +36,48 @@ jobs:
       - name: Build (m5stack_basic)
         run: pio run -e m5stack_basic -v
 
+      - name: List build artifacts
+        run: |
+          echo "Build artifacts:"
+          ls -lh .pio/build/m5stack_basic/
+          echo ""
+          echo "Checking for required files:"
+          test -f .pio/build/m5stack_basic/firmware.bin && echo "✓ firmware.bin found" || echo "✗ firmware.bin missing"
+          test -f .pio/build/m5stack_basic/bootloader.bin && echo "✓ bootloader.bin found" || echo "✗ bootloader.bin missing"
+          test -f .pio/build/m5stack_basic/partitions.bin && echo "✓ partitions.bin found" || echo "✗ partitions.bin missing"
+
+      - name: Create merged flash image for QEMU
+        run: |
+          cd .pio/build/m5stack_basic
+          
+          # Install esptool if not available
+          pip install esptool
+          
+          # Get the flash addresses from the build
+          # Standard ESP32 layout:
+          # - Bootloader at 0x1000
+          # - Partition table at 0x8000
+          # - Application at 0x10000
+          
+          echo "Creating merged flash image for QEMU..."
+          python -m esptool \
+            --chip esp32 \
+            merge_bin \
+            -o flash_image.bin \
+            --flash_mode dio \
+            --flash_size 4MB \
+            0x1000 bootloader.bin \
+            0x8000 partitions.bin \
+            0x10000 firmware.bin
+          
+          echo "Flash image created:"
+          ls -lh flash_image.bin
+
       - name: Upload firmware artifact
         uses: actions/upload-artifact@v4
         with:
           name: firmware
-          path: .pio/build/m5stack_basic/firmware.bin
+          path: |
+            .pio/build/m5stack_basic/firmware.bin
+            .pio/build/m5stack_basic/flash_image.bin
           if-no-files-found: error

@@ -3,6 +3,7 @@
 *.tmp
 *.swp
 *.DS_Store
+qemu_logs/
 
 # ---> Local helper scripts (nicht ins Repo)
 apply_sd_fixes.sh
@@ -28,3 +29,5 @@ artifact.zip
 .vscode/
 .idea/
 *.code-workspace
+qemu_logs/
+test_firmware/
