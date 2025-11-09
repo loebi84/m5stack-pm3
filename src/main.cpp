@@ -1,4 +1,4 @@
-#include "UsbPins.h"
+#include "UsbPins.h";
 #include <SPI.h>
 
 #include <Arduino.h>
@@ -45,13 +45,7 @@ void sendProxmarkRawHex(const String& hex){
   pm3.write(p.data(), p.size()); M5.Display.setTextColor(TFT_YELLOW,TFT_BLACK); M5.Display.print("> RAW "); M5.Display.println(bytesToHexLine(p.data(), p.size()));
 }
 void pumpProxmarkToDisplay(){
-  static char line[256]; static size_t fill=0;
-  while(pm3.available()){
-    int c=pm3.read(); if(c<0) break;
-    char ch=(char)c; if(ch=='\r') continue; if(ch=='\n'){ line[fill]=0; M5.Display.setTextColor(TFT_GREEN,TFT_BLACK); M5.Display.println(line); fill=0; continue; }
-    if(isprint((int)ch)){ if(fill<sizeof(line)-1) line[fill++]=ch; } else { if(fill<sizeof(line)-1) line[fill++]='.'; }
-    if(fill>=sizeof(line)-1){ line[fill]=0; M5.Display.setTextColor(TFT_GREEN,TFT_BLACK); M5.Display.println(line); fill=0; }
-  }
+    // Inefficient version replaced by optimized loop
 }
 
 // menu
@@ -162,7 +156,43 @@ void setup(){
 void loop(){
   M5.update();
   pm3.task();
-  pumpProxmarkToDisplay();
+  
+  if (pm3.available() > 0) {
+    size_t len = pm3.available();
+    std::vector<uint8_t> buf(len);
+    size_t read_len = 0;
+    while(read_len < len) {
+        int c = pm3.read();
+        if (c < 0) break;
+        buf[read_len++] = (uint8_t)c;
+    }
+
+    static char line[256];
+    static size_t fill = 0;
+    for(size_t i = 0; i < read_len; ++i) {
+        char ch = (char)buf[i];
+        if (ch == '\r') continue;
+        if (ch == '\n') {
+            line[fill] = 0;
+            M5.Display.setTextColor(TFT_GREEN, TFT_BLACK);
+            M5.Display.println(line);
+            fill = 0;
+            continue;
+        }
+        if (isprint((int)ch)) {
+            if (fill < sizeof(line) - 1) line[fill++] = ch;
+        } else {
+            if (fill < sizeof(line) - 1) line[fill++] = '.';
+        }
+        if (fill >= sizeof(line) - 1) {
+            line[fill] = 0;
+            M5.Display.setTextColor(TFT_GREEN, TFT_BLACK);
+            M5.Display.println(line);
+            fill = 0;
+        }
+    }
+  }
+
   if(M5.BtnA.wasPressed()){ cur=(cur+menuCount-1)%menuCount; drawMenu(); }
   if(M5.BtnC.wasPressed()){ cur=(cur+1)%menuCount; drawMenu(); }
   if(M5.BtnB.wasPressed()){ items[cur].action(); }
@@ -192,5 +222,4 @@ static bool sd_init_multi() {
     deselect_all_spi_clients();
   }
   return false;
-}
-/*** --- end helpers --- ***/
+}/*** --- end helpers --- ***/
